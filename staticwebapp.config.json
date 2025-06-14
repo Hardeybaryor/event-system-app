@@ -1,0 +1,10 @@
+{
+copy con staticwebapp.config.json
+{
+  "routes": [
+    {
+      "route": "/api/*",
+      "allowedRoles": ["anonymous"]
+    }
+  ]
+}
