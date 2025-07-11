@@ -1,26 +1,23 @@
-using System.Net;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 
-namespace EventFunctions
+namespace EventFunctions;
+
+public class RegisterAttendee
 {
-    public class RegisterAttendee
+    private readonly ILogger<RegisterAttendee> _logger;
+
+    public RegisterAttendee(ILogger<RegisterAttendee> logger)
     {
-        private readonly ILogger _logger;
+        _logger = logger;
+    }
 
-        public RegisterAttendee(ILoggerFactory loggerFactory)
-        {
-            _logger = loggerFactory.CreateLogger<RegisterAttendee>();
-        }
-
-        [Function("RegisterAttendee")]
-        public async Task<HttpResponseData> Run(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "register")] HttpRequestData req)
-        {
-            var response = req.CreateResponse(HttpStatusCode.OK);
-            await response.WriteStringAsync("{\"message\": \"Registered!\"}");
-            return response;
-        }
+    [Function("RegisterAttendee")]
+    public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequest req)
+    {
+        _logger.LogInformation("C# HTTP trigger function processed a request.");
+        return new OkObjectResult("Welcome to Azure Functions!");
     }
 }
