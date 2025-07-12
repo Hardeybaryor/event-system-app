@@ -75,7 +75,8 @@ namespace EventFunctions
             await blob.UploadAsync(new BinaryData(pngBytes), overwrite: true);
             string qrUrl = blob.Uri.ToString();
 
-            // Send email with SendGrid
+            // Send email with SendGrid- NOTE: Email sending is temporarily disabled due to missing SendGrid key
+            /*
             var sendGridKey = Environment.GetEnvironmentVariable("SendGridApiKey");
             var sg = new SendGridClient(sendGridKey);
             var msg = new SendGridMessage()
@@ -86,6 +87,7 @@ namespace EventFunctions
             };
             msg.AddTo(data.Email);
             await sg.SendEmailAsync(msg);
+            */
 
             // Return token and QR code URL
             var result = new { token, qrCodeUrl = qrUrl };
