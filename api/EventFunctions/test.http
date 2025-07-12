@@ -1,0 +1,10 @@
+### Register a new attendee
+POST https://calm-mushroom-0e5bc5503.6.azurestaticapps.net/api/register
+Content-Type: application/json
+
+{
+  "EventId": 1,
+  "FirstName": "Jane",
+  "LastName": "Doe",
+  "Email": "jane@example.com"
+}
