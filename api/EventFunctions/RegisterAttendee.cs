@@ -35,16 +35,18 @@ namespace EventFunctions
             var response = req.CreateResponse();
             response.Headers.Add("Content-Type", "application/json");
 
+            string step = "Initializing";
+
             try
             {
-                _logger.LogInformation("Reading request body...");
+                step = "Reading request body";
                 var body = await new StreamReader(req.Body).ReadToEndAsync();
                 var data = JsonSerializer.Deserialize<RegistrationDto>(body);
 
-                _logger.LogInformation("Generating token...");
+                step = "Generating token";
                 string token = Guid.NewGuid().ToString();
 
-                _logger.LogInformation("Connecting to SQL database...");
+                step = "Connecting to SQL";
                 var sqlConn = Environment.GetEnvironmentVariable("SqlConnectionString");
                 using (var conn = new SqlConnection(sqlConn))
                 {
@@ -60,13 +62,13 @@ namespace EventFunctions
                     await cmd.ExecuteNonQueryAsync();
                 }
 
-                _logger.LogInformation("Generating QR code...");
+                step = "Generating QR code";
                 using var qrGen = new QRCodeGenerator();
                 var qrData = qrGen.CreateQrCode(token, QRCodeGenerator.ECCLevel.Q);
                 using var qr = new PngByteQRCode(qrData);
                 byte[] pngBytes = qr.GetGraphic(20);
 
-                _logger.LogInformation("Uploading QR to Blob Storage...");
+                step = "Uploading to Blob";
                 var blobConn = Environment.GetEnvironmentVariable("StorageConnectionString");
                 var blobService = new BlobServiceClient(blobConn);
                 var container = blobService.GetBlobContainerClient("qrcodes");
@@ -75,15 +77,16 @@ namespace EventFunctions
                 await blob.UploadAsync(new BinaryData(pngBytes), overwrite: true);
                 string qrUrl = blob.Uri.ToString();
 
-                _logger.LogInformation("Function completed successfully.");
-                var result = new { token, qrCodeUrl = qrUrl };
+                step = "Success";
+                var result = new { step, token, qrCodeUrl = qrUrl };
                 await response.WriteStringAsync(JsonSerializer.Serialize(result));
                 return response;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Something went wrong: {ex.Message}");
+                var error = new { step, error = ex.Message };
                 response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                await response.WriteStringAsync(JsonSerializer.Serialize(error));
                 return response;
             }
         }
