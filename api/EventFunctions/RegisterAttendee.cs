@@ -8,8 +8,6 @@ using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using QRCoder;
-using SendGrid;
-using SendGrid.Helpers.Mail;
 
 namespace EventFunctions
 {
@@ -37,62 +35,57 @@ namespace EventFunctions
             var response = req.CreateResponse();
             response.Headers.Add("Content-Type", "application/json");
 
-            // Parse request body
-            var body = await new StreamReader(req.Body).ReadToEndAsync();
-            var data = JsonSerializer.Deserialize<RegistrationDto>(body);
-
-            // Generate unique token
-            string token = Guid.NewGuid().ToString();
-
-            // Save to SQL DB
-            var sqlConn = Environment.GetEnvironmentVariable("SqlConnectionString");
-            using (var conn = new SqlConnection(sqlConn))
+            try
             {
-                await conn.OpenAsync();
-                var cmd = new SqlCommand(
-                    "INSERT INTO Attendees (EventID, FirstName, LastName, Email, QRCodeToken) " +
-                    "VALUES (@e, @f, @l, @m, @t)", conn);
-                cmd.Parameters.AddWithValue("@e", data.EventId);
-                cmd.Parameters.AddWithValue("@f", data.FirstName);
-                cmd.Parameters.AddWithValue("@l", data.LastName);
-                cmd.Parameters.AddWithValue("@m", data.Email);
-                cmd.Parameters.AddWithValue("@t", token);
-                await cmd.ExecuteNonQueryAsync();
+                _logger.LogInformation("Reading request body...");
+                var body = await new StreamReader(req.Body).ReadToEndAsync();
+                var data = JsonSerializer.Deserialize<RegistrationDto>(body);
+
+                _logger.LogInformation("Generating token...");
+                string token = Guid.NewGuid().ToString();
+
+                _logger.LogInformation("Connecting to SQL database...");
+                var sqlConn = Environment.GetEnvironmentVariable("SqlConnectionString");
+                using (var conn = new SqlConnection(sqlConn))
+                {
+                    await conn.OpenAsync();
+                    var cmd = new SqlCommand(
+                        "INSERT INTO Attendees (EventID, FirstName, LastName, Email, QRCodeToken) " +
+                        "VALUES (@e, @f, @l, @m, @t)", conn);
+                    cmd.Parameters.AddWithValue("@e", data.EventId);
+                    cmd.Parameters.AddWithValue("@f", data.FirstName);
+                    cmd.Parameters.AddWithValue("@l", data.LastName);
+                    cmd.Parameters.AddWithValue("@m", data.Email);
+                    cmd.Parameters.AddWithValue("@t", token);
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                _logger.LogInformation("Generating QR code...");
+                using var qrGen = new QRCodeGenerator();
+                var qrData = qrGen.CreateQrCode(token, QRCodeGenerator.ECCLevel.Q);
+                using var qr = new PngByteQRCode(qrData);
+                byte[] pngBytes = qr.GetGraphic(20);
+
+                _logger.LogInformation("Uploading QR to Blob Storage...");
+                var blobConn = Environment.GetEnvironmentVariable("StorageConnectionString");
+                var blobService = new BlobServiceClient(blobConn);
+                var container = blobService.GetBlobContainerClient("qrcodes");
+                await container.CreateIfNotExistsAsync();
+                var blob = container.GetBlobClient($"{token}.png");
+                await blob.UploadAsync(new BinaryData(pngBytes), overwrite: true);
+                string qrUrl = blob.Uri.ToString();
+
+                _logger.LogInformation("Function completed successfully.");
+                var result = new { token, qrCodeUrl = qrUrl };
+                await response.WriteStringAsync(JsonSerializer.Serialize(result));
+                return response;
             }
-
-            // Generate QR code
-            using var qrGen = new QRCodeGenerator();
-            var qrData = qrGen.CreateQrCode(token, QRCodeGenerator.ECCLevel.Q);
-            using var qr = new PngByteQRCode(qrData);
-            byte[] pngBytes = qr.GetGraphic(20);
-
-            // Upload to Azure Blob Storage
-            var blobConn = Environment.GetEnvironmentVariable("StorageConnectionString");
-            var blobService = new BlobServiceClient(blobConn);
-            var container = blobService.GetBlobContainerClient("qrcodes");
-            await container.CreateIfNotExistsAsync();
-            var blob = container.GetBlobClient($"{token}.png");
-            await blob.UploadAsync(new BinaryData(pngBytes), overwrite: true);
-            string qrUrl = blob.Uri.ToString();
-
-            // Send email with SendGrid- NOTE: Email sending is temporarily disabled due to missing SendGrid key
-            /*
-            var sendGridKey = Environment.GetEnvironmentVariable("SendGridApiKey");
-            var sg = new SendGridClient(sendGridKey);
-            var msg = new SendGridMessage()
+            catch (Exception ex)
             {
-                From = new EmailAddress("no-reply@yourevent.com", "Event Team"),
-                Subject = "Event Registration",
-                HtmlContent = $"<p>Hi {data.FirstName},</p><p>Thanks for registering! Here's your QR code:</p><img src=\"{qrUrl}\" />"
-            };
-            msg.AddTo(data.Email);
-            await sg.SendEmailAsync(msg);
-            */
-
-            // Return token and QR code URL
-            var result = new { token, qrCodeUrl = qrUrl };
-            await response.WriteStringAsync(JsonSerializer.Serialize(result));
-            return response;
+                _logger.LogError($"Something went wrong: {ex.Message}");
+                response.StatusCode = System.Net.HttpStatusCode.InternalServerError;
+                return response;
+            }
         }
     }
 }
