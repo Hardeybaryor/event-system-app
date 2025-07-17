@@ -7,6 +7,7 @@ function App() {
     firstName: '',
     lastName: '',
     email: '',
+    eventId: 1
   });
 
   const [response, setResponse] = useState(null);
