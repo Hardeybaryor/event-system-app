@@ -22,7 +22,7 @@ namespace EventFunctions
 
         public class RegistrationDto
         {
-            public int EventId { get; set; }
+            public int EventId { get; set; } // nullable
             public string FirstName { get; set; }
             public string LastName { get; set; }
             public string Email { get; set; }
@@ -42,9 +42,16 @@ namespace EventFunctions
                 step = "Reading request body";
                 var body = await new StreamReader(req.Body).ReadToEndAsync();
                 var data = JsonSerializer.Deserialize<RegistrationDto>(body);
+                if (data == null || string.IsNullOrWhiteSpace(data.FirstName) || string.IsNullOrWhiteSpace(data.Email))
+                {
+                    throw new Exception("Invalid request body.");
+                }
 
                 step = "Generating token";
                 string token = Guid.NewGuid().ToString();
+
+                // Make sure EventId is optional or assign a default:
+                int eventId = data.EventId > 0 ? data.EventId : 1;
 
                 step = "Connecting to SQL";
                 var sqlConn = Environment.GetEnvironmentVariable("SqlConnectionString");
