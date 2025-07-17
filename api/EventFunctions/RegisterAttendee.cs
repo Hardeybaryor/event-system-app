@@ -23,9 +23,9 @@ namespace EventFunctions
         public class RegistrationDto
         {
             public int EventId { get; set; }
-            public string FirstName { get; set; }
-            public string LastName { get; set; }
-            public string Email { get; set; }
+            public required string FirstName { get; set; }
+            public required string LastName { get; set; }
+            public required string Email { get; set; }
         }
 
         [Function("RegisterAttendee")]
@@ -55,7 +55,7 @@ namespace EventFunctions
 
                 step = "Generating token";
                 string token = Guid.NewGuid().ToString();
-                int eventId = data.EventId ?? 1;
+                int eventId = data.EventId;
 
                 step = "Connecting to SQL";
                 var sqlConn = Environment.GetEnvironmentVariable("SqlConnectionString");
