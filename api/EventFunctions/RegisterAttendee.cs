@@ -22,7 +22,7 @@ namespace EventFunctions
 
         public class RegistrationDto
         {
-            public int EventId { get; set; } // nullable
+            public int? EventId { get; set; }
             public string FirstName { get; set; }
             public string LastName { get; set; }
             public string Email { get; set; }
@@ -42,26 +42,27 @@ namespace EventFunctions
                 step = "Reading request body";
                 var body = await new StreamReader(req.Body).ReadToEndAsync();
                 var data = JsonSerializer.Deserialize<RegistrationDto>(body);
-                if (data == null || string.IsNullOrWhiteSpace(data.FirstName) || string.IsNullOrWhiteSpace(data.Email))
+
+                if (data == null || string.IsNullOrWhiteSpace(data.FirstName) ||
+                    string.IsNullOrWhiteSpace(data.LastName) || string.IsNullOrWhiteSpace(data.Email))
                 {
-                    throw new Exception("Invalid request body.");
+                    throw new Exception("Invalid or incomplete registration data.");
                 }
 
                 step = "Generating token";
                 string token = Guid.NewGuid().ToString();
-
-                // Make sure EventId is optional or assign a default:
-                int eventId = data.EventId > 0 ? data.EventId : 1;
+                int eventId = data.EventId ?? 1;
 
                 step = "Connecting to SQL";
                 var sqlConn = Environment.GetEnvironmentVariable("SqlConnectionString");
+
                 using (var conn = new SqlConnection(sqlConn))
                 {
                     await conn.OpenAsync();
                     var cmd = new SqlCommand(
                         "INSERT INTO Attendees (EventID, FirstName, LastName, Email, QRCodeToken) " +
                         "VALUES (@e, @f, @l, @m, @t)", conn);
-                    cmd.Parameters.AddWithValue("@e", data.EventId);
+                    cmd.Parameters.AddWithValue("@e", eventId);
                     cmd.Parameters.AddWithValue("@f", data.FirstName);
                     cmd.Parameters.AddWithValue("@l", data.LastName);
                     cmd.Parameters.AddWithValue("@m", data.Email);
