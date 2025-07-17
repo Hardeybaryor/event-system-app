@@ -26,7 +26,7 @@ function App() {
     setResponse(null);
 
     try {
-      const res = await fetch('/api/EventFunctions/RegisterAttendee', {
+      const res = await fetch('/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
