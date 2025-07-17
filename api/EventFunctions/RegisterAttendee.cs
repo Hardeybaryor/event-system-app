@@ -22,7 +22,7 @@ namespace EventFunctions
 
         public class RegistrationDto
         {
-            public int? EventId { get; set; }
+            public int EventId { get; set; }
             public string FirstName { get; set; }
             public string LastName { get; set; }
             public string Email { get; set; }
@@ -41,10 +41,14 @@ namespace EventFunctions
             {
                 step = "Reading request body";
                 var body = await new StreamReader(req.Body).ReadToEndAsync();
+                _logger.LogInformation($"Request body: {body}");
                 var data = JsonSerializer.Deserialize<RegistrationDto>(body);
 
-                if (data == null || string.IsNullOrWhiteSpace(data.FirstName) ||
-                    string.IsNullOrWhiteSpace(data.LastName) || string.IsNullOrWhiteSpace(data.Email))
+                if (data == null ||
+                    string.IsNullOrEmpty(data.FirstName) ||
+                    string.IsNullOrEmpty(data.LastName) ||
+                    string.IsNullOrEmpty(data.Email) ||
+                    data.EventId <= 0)
                 {
                     throw new Exception("Invalid or incomplete registration data.");
                 }
