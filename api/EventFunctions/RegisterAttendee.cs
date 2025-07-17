@@ -45,9 +45,9 @@ namespace EventFunctions
                 var data = JsonSerializer.Deserialize<RegistrationDto>(body);
 
                 if (data == null ||
-                    string.IsNullOrEmpty(data.FirstName) ||
-                    string.IsNullOrEmpty(data.LastName) ||
-                    string.IsNullOrEmpty(data.Email) ||
+                    string.IsNullOrWhiteSpace(data.FirstName) ||
+                    string.IsNullOrWhiteSpace(data.LastName) ||
+                    string.IsNullOrWhiteSpace(data.Email) ||
                     data.EventId <= 0)
                 {
                     throw new Exception("Invalid or incomplete registration data.");

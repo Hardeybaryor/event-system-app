@@ -3,10 +3,10 @@ import './App.css';
 
 function App() {
   const [formData, setFormData] = useState({
+    eventId: 1,
     firstName: '',
     lastName: '',
     email: '',
-    eventId: 1, // Default value; adjust as needed
   });
 
   const [response, setResponse] = useState(null);
@@ -28,8 +28,9 @@ function App() {
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+        headers:
+        {
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(formData),
       });
