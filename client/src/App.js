@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import './App.css';
 
-
 function App() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    eventId: 1
+    eventId: 1, // Default value; adjust as needed
   });
 
   const [response, setResponse] = useState(null);
@@ -35,48 +34,33 @@ function App() {
         body: JSON.stringify(formData),
       });
 
+      const text = await res.text();
+
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Something went wrong.');
+        // Try to parse error details
+        try {
+          const errorData = JSON.parse(text);
+          throw new Error(errorData.error || `Error ${res.status}`);
+        } catch {
+          throw new Error(`Unexpected response: ${text}`);
+        }
       }
 
-      const data = await res.json();
-      setResponse(data);
+      try {
+        const data = JSON.parse(text);
+        setResponse(data);
+      } catch (err) {
+        throw new Error("Invalid JSON response from server.");
+      }
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const styles = {
-    container: {
-      fontFamily: 'Arial, sans-serif',
-      textAlign: 'center',
-      padding: '20px',
-    },
-    form: {
-      marginBottom: '20px',
-    },
-    input: {
-      padding: '8px',
-      margin: '5px',
-      width: '200px',
-    },
-    button: {
-      padding: '10px 20px',
-      marginTop: '10px',
-    },
-    success: {
-      color: 'green',
-    },
-    error: {
-      color: 'red',
-    },
-  };
-
   return (
-    <div style={styles.container}>
+    <div className="App">
       <h1>Event Registration</h1>
-      <form onSubmit={handleSubmit} style={styles.form}>
+      <form onSubmit={handleSubmit}>
         <input
           type="text"
           name="firstName"
@@ -84,7 +68,6 @@ function App() {
           value={formData.firstName}
           onChange={handleChange}
           required
-          style={styles.input}
         />
         <br />
         <input
@@ -94,7 +77,6 @@ function App() {
           value={formData.lastName}
           onChange={handleChange}
           required
-          style={styles.input}
         />
         <br />
         <input
@@ -104,14 +86,13 @@ function App() {
           value={formData.email}
           onChange={handleChange}
           required
-          style={styles.input}
         />
         <br />
-        <button type="submit" style={styles.button}>Register</button>
+        <button type="submit">Register</button>
       </form>
 
       {response && (
-        <div style={styles.success}>
+        <div className="success">
           <h3>Registration Successful!</h3>
           <p><strong>Token:</strong> {response.token}</p>
           <a href={response.qrCodeUrl} target="_blank" rel="noopener noreferrer">
@@ -121,8 +102,8 @@ function App() {
       )}
 
       {error && (
-        <div style={styles.error}>
-          <p>Error: {error}</p>
+        <div className="error">
+          <p style={{ color: 'red' }}>Error: {error}</p>
         </div>
       )}
     </div>
