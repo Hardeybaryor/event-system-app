@@ -89,7 +89,19 @@ namespace EventFunctions
                 await container.CreateIfNotExistsAsync();
                 var blob = container.GetBlobClient($"{token}.png");
                 await blob.UploadAsync(new BinaryData(pngBytes), overwrite: true);
-                string qrUrl = blob.Uri.ToString();
+
+                // Generate SAS token (valid for 10 minutes)
+                var sasBuilder = new Azure.Storage.Sas.BlobSasBuilder
+                {
+                    BlobContainerName = container.Name,
+                    BlobName = blob.Name,
+                    Resource = "b",
+                    ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(10)
+                };
+                sasBuilder.SetPermissions(Azure.Storage.Sas.BlobSasPermissions.Read);
+
+                var blobUriWithSas = blob.GenerateSasUri(sasBuilder);
+                string qrUrl = blobUriWithSas.ToString();
 
                 step = "Success";
                 var result = new { step, token, qrCodeUrl = qrUrl };
