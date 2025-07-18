@@ -42,7 +42,9 @@ namespace EventFunctions
                 step = "Reading request body";
                 var body = await new StreamReader(req.Body).ReadToEndAsync();
                 _logger.LogInformation($"Request body: {body}");
-                var data = JsonSerializer.Deserialize<RegistrationDto>(body);
+                var data = JsonSerializer.Deserialize<RegistrationDto>(
+                    body,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
                 if (data == null ||
                     string.IsNullOrWhiteSpace(data.FirstName) ||
